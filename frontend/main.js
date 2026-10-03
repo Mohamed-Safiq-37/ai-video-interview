@@ -19,6 +19,36 @@ const chatLog = document.getElementById("chat-log");
 
 let currentGeminiMessageDiv = null;
 let currentUserMessageDiv = null;
+let errorShown = false;
+
+const toastContainer = document.createElement("div");
+toastContainer.className = "toast-container";
+document.body.appendChild(toastContainer);
+
+// Error toasts stay until dismissed so the message can be read/copied
+function showToast(message, { title = "Error", type = "error", duration = 0 } = {}) {
+  const toast = document.createElement("div");
+  toast.className = `toast ${type}`;
+  toast.setAttribute("role", type === "error" ? "alert" : "status");
+
+  const body = document.createElement("div");
+  body.className = "toast-body";
+  const titleEl = document.createElement("strong");
+  titleEl.textContent = title;
+  const messageEl = document.createElement("p");
+  messageEl.textContent = message;
+  body.append(titleEl, messageEl);
+
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "toast-close";
+  closeBtn.setAttribute("aria-label", "Dismiss");
+  closeBtn.textContent = "×";
+  closeBtn.onclick = () => toast.remove();
+
+  toast.append(body, closeBtn);
+  toastContainer.appendChild(toast);
+  if (duration) setTimeout(() => toast.remove(), duration);
+}
 
 const mediaHandler = new MediaHandler();
 const geminiClient = new GeminiClient({
@@ -52,6 +82,14 @@ const geminiClient = new GeminiClient({
     if (interactionStatusDiv) {
       interactionStatusDiv.className = "interaction-status hidden";
     }
+    if (!errorShown && e.code !== 1000 && e.code !== 1005) {
+      showToast(
+        `The connection to the server closed unexpectedly (code ${e.code}).`,
+        { title: "Connection lost" }
+      );
+    }
+    errorShown = false;
+    connectBtn.disabled = false;
     showSessionEnd();
   },
   onError: (e) => {
@@ -62,7 +100,12 @@ const geminiClient = new GeminiClient({
 });
 
 function handleJsonMessage(msg) {
-  if (msg.type === "interaction_status") {
+  if (msg.type === "error") {
+    errorShown = true;
+    statusDiv.textContent = "Error";
+    statusDiv.className = "status error";
+    showToast(msg.error || "Unknown error", { title: msg.title || "Error" });
+  } else if (msg.type === "interaction_status") {
     if (interactionStatusDiv) {
       if (msg.status === "IN_PROGRESS") {
         interactionStatusDiv.textContent = "Processing...";
@@ -143,7 +186,7 @@ micBtn.onclick = async () => {
       });
       micBtn.textContent = "Stop Mic";
     } catch (e) {
-      alert("Could not start audio capture");
+      showToast(e.message || "Microphone permission denied.", { title: "Could not start audio capture" });
     }
   }
 };
@@ -171,7 +214,7 @@ cameraBtn.onclick = async () => {
       screenBtn.textContent = "Share Screen";
       videoPlaceholder.classList.add("hidden");
     } catch (e) {
-      alert("Could not access camera");
+      showToast(e.message || "Camera permission denied.", { title: "Could not access camera" });
     }
   }
 };
@@ -207,7 +250,7 @@ screenBtn.onclick = async () => {
       cameraBtn.textContent = "Start Camera";
       videoPlaceholder.classList.add("hidden");
     } catch (e) {
-      alert("Could not share screen");
+      showToast(e.message || "Screen sharing was blocked.", { title: "Could not share screen" });
     }
   }
 };

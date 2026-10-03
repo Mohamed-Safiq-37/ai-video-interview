@@ -1,4 +1,4 @@
-from google.genai import types
+from google.genai import errors, types
 from google import genai
 import asyncio
 import inspect
@@ -6,6 +6,26 @@ import logging
 import traceback
 
 logger = logging.getLogger(__name__)
+
+
+def error_event(e):
+    """Builds a client-facing error event from an exception raised by the Gemini API."""
+    code = None
+    if isinstance(e, errors.APIError):
+        code = e.code
+        message = e.message or (e.details if isinstance(e.details, str) else str(e))
+    else:
+        message = str(e) or type(e).__name__
+
+    lowered = message.lower()
+    if code == 429 or "quota" in lowered or "resource_exhausted" in lowered or "rate limit" in lowered:
+        title = "Gemini API quota exhausted"
+    elif code in (401, 403) or "api key" in lowered or "permission" in lowered:
+        title = "Gemini API authentication failed"
+    else:
+        title = "Gemini API error"
+
+    return {"type": "error", "title": title, "error": message, "code": code}
 
 
 class GeminiLive:
@@ -39,7 +59,8 @@ class GeminiLive:
                     prebuilt_voice_config=types.PrebuiltVoiceConfig(
                         voice_name="Puck"
                     )
-                )
+                ),
+                language_code="en-US",
             ),
             system_instruction=types.Content(parts=[types.Part(text="""" You are an AI  Yuvanext interviewer conducting a real-time video interview.
 
@@ -50,18 +71,30 @@ Your primary responsibilities are:
 3. Monitor eye contact and visual engagement in real time.
 4. Immediately intervene when the candidate is not maintaining eye contact.
 
+LANGUAGE:
+
+The interview is conducted entirely in English. Always speak and respond in English, even if the candidate's speech sounds like another language or contains words from another language.
+
 INTERVIEW FLOW:
 
 * Start the interview by saying:
-  "Hello, welcome to the interview. Let's begin. Could you please tell me about yourself?"
+  "Hello, welcome to the interview. Let's begin. Tell me about yourself."
+
+* Ask exactly these 4 questions, in this order, and no others:
+  1. "Tell me about yourself."
+  2. "What are your strengths and weaknesses?"
+  3. "Where do you see yourself in the next 3–5 years?"
+  4. "How do you work in a team?"
 
 * Ask one question at a time.
 
 * Listen to the candidate's response before asking the next question.
 
-* Ask relevant follow-up questions based on their answers.
+* Do not ask follow-up questions.
 
 * Maintain a professional and natural conversational tone.
+
+* After the candidate answers the 4th question, thank them, say the interview is complete, and immediately give the final feedback.
 
 REAL-TIME EYE CONTACT MONITORING:
 
@@ -115,7 +148,7 @@ INTERVIEW CONTINUATION:
 After the candidate finishes answering:
 
 * Acknowledge the response briefly.
-* Ask the next relevant interview question.
+* Ask the next question from the list, or if all 4 have been answered, end the interview and give the final feedback.
 * Continue monitoring eye contact throughout the interview.
 
 FINAL FEEDBACK:
@@ -154,8 +187,13 @@ Do not claim to measure exact eye-gaze angles or exact eye-contact percentages u
 
 The goal is to simulate a real interviewer who actively observes the candidate and provides immediate coaching when eye contact is not maintained.
 """)]),
-            input_audio_transcription=types.AudioTranscriptionConfig(),
-            output_audio_transcription=types.AudioTranscriptionConfig(),
+            # Pin transcription to English; auto-detect misclassifies short/accented speech
+            input_audio_transcription=types.AudioTranscriptionConfig(
+                language_hints=types.LanguageHints(language_codes=["en-US"]),
+            ),
+            output_audio_transcription=types.AudioTranscriptionConfig(
+                language_hints=types.LanguageHints(language_codes=["en-US"]),
+            ),
             realtime_input_config=types.RealtimeInputConfig(
                 turn_coverage="TURN_INCLUDES_ONLY_ACTIVITY",
             ),
@@ -299,7 +337,7 @@ The goal is to simulate a real interviewer who actively observes the candidate a
                     except Exception as e:
                         logger.error(
                             f"receive_loop error: {type(e).__name__}: {e}\n{traceback.format_exc()}")
-                        await event_queue.put({"type": "error", "error": f"{type(e).__name__}: {e}"})
+                        await event_queue.put(error_event(e))
                     finally:
                         logger.info("receive_loop exiting")
                         await event_queue.put(None)

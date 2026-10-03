@@ -9,7 +9,7 @@ from fastapi import FastAPI, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
-from gemini_live import GeminiLive
+from gemini_live import GeminiLive, error_event
 from twilio_handler import TwilioHandler
 
 # Load environment variables
@@ -116,6 +116,11 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         import traceback
         logger.error(f"Error in Gemini session: {type(e).__name__}: {e}\n{traceback.format_exc()}")
+        # Surface connection-time failures (bad key, quota, etc.) to the UI before closing
+        try:
+            await websocket.send_json(error_event(e))
+        except Exception:
+            pass
     finally:
         receive_task.cancel()
         # Ensure websocket is closed if not already
