@@ -9,7 +9,7 @@ from fastapi import FastAPI, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
-from gemini_live import GeminiLive, error_event
+from gemini_live import DEFAULT_LANGUAGE, LANGUAGES, GeminiLive, error_event
 from twilio_handler import TwilioHandler
 
 # Load environment variables
@@ -51,11 +51,13 @@ async def root():
 
 
 @app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_endpoint(websocket: WebSocket, language: str = Query(DEFAULT_LANGUAGE)):
     """WebSocket endpoint for Gemini Live."""
     await websocket.accept()
 
-    logger.info("WebSocket connection accepted")
+    if language not in LANGUAGES:
+        language = DEFAULT_LANGUAGE
+    logger.info(f"WebSocket connection accepted (language={language})")
 
     audio_input_queue = asyncio.Queue()
     video_input_queue = asyncio.Queue()
@@ -69,7 +71,7 @@ async def websocket_endpoint(websocket: WebSocket):
         pass
 
     gemini_client = GeminiLive(
-        api_key=GEMINI_API_KEY, model=MODEL, input_sample_rate=16000
+        api_key=GEMINI_API_KEY, model=MODEL, input_sample_rate=16000, language=language
     )
 
     async def receive_from_client():

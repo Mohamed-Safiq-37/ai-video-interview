@@ -1,6 +1,10 @@
 /**
  * MediaHandler: Manages Audio/Video capture and playback
  */
+
+// One frame every 2s keeps a 10+ minute interview inside the model's context window
+const FRAME_INTERVAL_MS = 2000;
+
 class MediaHandler {
   constructor() {
     this.audioContext = null;
@@ -90,7 +94,7 @@ class MediaHandler {
 
       this.videoInterval = setInterval(() => {
         this.captureFrame(videoElement, onFrame);
-      }, 1000); // 1 FPS
+      }, FRAME_INTERVAL_MS);
     } catch (e) {
       console.error("Error starting video:", e);
       throw e;
@@ -112,7 +116,7 @@ class MediaHandler {
 
       this.videoInterval = setInterval(() => {
         this.captureFrame(videoElement, onFrame);
-      }, 1000); // 1 FPS
+      }, FRAME_INTERVAL_MS);
     } catch (e) {
       console.error("Error starting screen share:", e);
       throw e;

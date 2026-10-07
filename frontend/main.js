@@ -15,11 +15,15 @@ const sendBtn = document.getElementById("sendBtn");
 const videoPreview = document.getElementById("video-preview");
 const videoPlaceholder = document.getElementById("video-placeholder");
 const connectBtn = document.getElementById("connectBtn");
+const languageSelect = document.getElementById("languageSelect");
+const usageSummaryDiv = document.getElementById("usage-summary");
 const chatLog = document.getElementById("chat-log");
 
 let currentGeminiMessageDiv = null;
 let currentUserMessageDiv = null;
 let errorShown = false;
+// Latest running token usage from the server, shown when the session ends
+let latestUsage = null;
 
 const toastContainer = document.createElement("div");
 toastContainer.className = "toast-container";
@@ -105,6 +109,8 @@ function handleJsonMessage(msg) {
     statusDiv.textContent = "Error";
     statusDiv.className = "status error";
     showToast(msg.error || "Unknown error", { title: msg.title || "Error" });
+  } else if (msg.type === "usage") {
+    latestUsage = msg;
   } else if (msg.type === "interaction_status") {
     if (interactionStatusDiv) {
       if (msg.status === "IN_PROGRESS") {
@@ -159,7 +165,7 @@ connectBtn.onclick = async () => {
     // Initialize audio context on user gesture
     await mediaHandler.initializeAudio();
 
-    geminiClient.connect();
+    geminiClient.connect(languageSelect.value);
   } catch (error) {
     console.error("Connection error:", error);
     statusDiv.textContent = "Connection Failed: " + error.message;
@@ -283,6 +289,29 @@ function resetUI() {
   screenBtn.textContent = "Share Screen";
   chatLog.innerHTML = "";
   connectBtn.disabled = false;
+  latestUsage = null;
+  usageSummaryDiv.classList.add("hidden");
+}
+
+function renderUsageSummary() {
+  if (!latestUsage) {
+    usageSummaryDiv.classList.add("hidden");
+    return;
+  }
+  const labels = { AUDIO: "Audio", IMAGE: "Video frames", VIDEO: "Video", TEXT: "Text", THOUGHTS: "Thinking" };
+  const rows = (direction, counts) =>
+    Object.entries(counts)
+      .map(([modality, n]) => `<tr><td>${direction} — ${labels[modality] || modality}</td><td>${n.toLocaleString()}</td></tr>`)
+      .join("");
+
+  usageSummaryDiv.innerHTML = `
+    <div class="usage-cost">Estimated cost: $${latestUsage.cost_usd.toFixed(4)}</div>
+    <table>
+      ${rows("Input", latestUsage.input_tokens)}
+      ${rows("Output", latestUsage.output_tokens)}
+    </table>
+    <p class="note">Token counts reported by Gemini; cost is an estimate from list prices.</p>`;
+  usageSummaryDiv.classList.remove("hidden");
 }
 
 function showSessionEnd() {
@@ -290,6 +319,7 @@ function showSessionEnd() {
   sessionEndSection.classList.remove("hidden");
   mediaHandler.stopAudio();
   mediaHandler.stopVideo(videoPreview);
+  renderUsageSummary();
 }
 
 restartBtn.onclick = () => {

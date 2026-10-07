@@ -34,16 +34,21 @@
                 <strong>Native Audio:</strong> Low latency voice interaction
               </li>
               <li>
-                <strong>Multilingual:</strong> Speak in different languages
+                <strong>English or Tamil:</strong> The whole interview is
+                conducted in the language you choose
               </li>
-
+              <li>
+                <strong>Feedback at the end:</strong> No interruptions while
+                you answer
+              </li>
             </ul>
-            <p>
-              <em
-                >Note: When you connect, the app sends a text message to Gemini
-                instructing it to introduce itself and these features.</em
-              >
-            </p>
+          </div>
+          <div class="language-picker">
+            <label for="languageSelect">Interview language:</label>
+            <select id="languageSelect">
+              <option value="en">English</option>
+              <option value="ta">Tamil (தமிழ்)</option>
+            </select>
           </div>
           <p>Click below to connect.</p>
           <button id="connectBtn" class="btn">Connect</button>
@@ -51,6 +56,7 @@
 
         <div class="session-end-section hidden" id="session-end-section">
           <h2>Session Ended</h2>
+          <div class="usage-summary hidden" id="usage-summary"></div>
           <button id="restartBtn" class="btn">Start New Session</button>
         </div>
 

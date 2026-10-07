@@ -10,9 +10,9 @@ class GeminiClient {
     this.onError = config.onError;
   }
 
-  connect() {
+  connect(language = "en") {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    const wsUrl = `${protocol}//${window.location.host}/ws?language=${encodeURIComponent(language)}`;
 
     this.websocket = new WebSocket(wsUrl);
     this.websocket.binaryType = "arraybuffer";
