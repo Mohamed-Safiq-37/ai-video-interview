@@ -283,6 +283,47 @@ input[type="text"] {
   border: 1px solid #ddd;
   border-radius: 4px;
 }
+.language-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.language-picker select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.usage-summary {
+  padding: 1rem 1.5rem;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  text-align: left;
+}
+
+.usage-summary .usage-cost {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.usage-summary table {
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.usage-summary td {
+  padding: 0.15rem 1rem 0.15rem 0;
+}
+
+.usage-summary td:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 .note {
   font-size: 0.8rem;
   color: #666;
