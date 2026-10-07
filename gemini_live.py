@@ -44,11 +44,25 @@ PRICE_PER_M_OUTPUT = {"AUDIO": 12.00, "TEXT": 4.50, "THOUGHTS": 12.00}
 # Reconnect attempts allowed in a row before giving up on a dropped connection
 MAX_RESUME_ATTEMPTS = 3
 
+# Testing only: cycle through the questions again and again until the candidate
+# says "finish interview", instead of stopping after the last question.
+REPEAT_QUESTIONS_UNTIL_FINISH = True
+
 
 def build_system_instruction(language):
     lang = LANGUAGES[language]
     name = lang["name"]
     questions = "\n".join(f'  {i}. "{q}"' for i, q in enumerate(lang["questions"], 1))
+
+    if REPEAT_QUESTIONS_UNTIL_FINISH:
+        question_rule = f"""* Ask these 4 questions, in this order, and no others:
+{questions}
+* After the 4th question, start again from question 1 and keep repeating the same 4 questions in the same order. Do not end the interview on your own."""
+        end_rule = """* The interview ends only when the candidate says "finish interview" (or the same meaning in any language). Then stop asking questions, thank them, say the interview is complete, and immediately give the final feedback, covering all of their answers."""
+    else:
+        question_rule = f"""* Ask exactly these 4 questions, in this order, and no others:
+{questions}"""
+        end_rule = "* After the candidate answers the 4th question, thank them, say the interview is complete, and immediately give the final feedback."
 
     return f"""You are an AI Yuvanext interviewer conducting a real-time video interview.
 
@@ -68,8 +82,7 @@ INTERVIEW FLOW:
 * Start the interview by saying:
   "{lang["greeting"]}"
 
-* Ask exactly these 4 questions, in this order, and no others:
-{questions}
+{question_rule}
 
 * Ask one question at a time.
 * Listen to the candidate's full response before asking the next question.
@@ -77,7 +90,7 @@ INTERVIEW FLOW:
 * Do not ask follow-up questions.
 * Maintain a professional and natural conversational tone.
 * Between questions, acknowledge the response with a brief, neutral phrase only. Do not evaluate or praise the answer.
-* After the candidate answers the 4th question, thank them, say the interview is complete, and immediately give the final feedback.
+{end_rule}
 
 NO INTERRUPTIONS DURING THE INTERVIEW:
 
